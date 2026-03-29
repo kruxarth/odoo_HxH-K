@@ -202,8 +202,8 @@ export function RoleSwitcher() {
                 setRole(r);
                 setOpen(false);
               }}
-              className={`px-3 py-1.5 rounded-full text-xs font-mono font-medium border transition-all
-                ${role === r ? ROLE_COLORS[r] : "bg-card/90 text-muted-foreground border-border hover:border-primary/50"}
+              className={`px-3 py-1.5 rounded-full text-xs font-mono font-medium border transition-all shadow-sm
+                ${role === r ? ROLE_COLORS[r] : "bg-card text-muted-foreground border-border hover:border-primary/50"}
                 backdrop-blur-sm`}
             >
               {r}
@@ -213,7 +213,7 @@ export function RoleSwitcher() {
       )}
       <button
         onClick={() => setOpen(!open)}
-        className={`flex items-center gap-2 px-4 py-2 rounded-full text-xs font-mono font-semibold border backdrop-blur-sm shadow-lg transition-all
+        className={`flex items-center gap-2 px-4 py-2 rounded-full text-xs font-mono font-semibold border backdrop-blur-sm shadow-lg transition-all bg-card
           ${ROLE_COLORS[role]}`}
       >
         <span className="w-1.5 h-1.5 rounded-full bg-current" />

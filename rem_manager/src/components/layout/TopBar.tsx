@@ -36,7 +36,7 @@ export function TopBar({ onMenuClick }: TopBarProps) {
   const segments = getSegments(pathname);
 
   return (
-    <header className="h-14 flex items-center px-4 lg:px-6 border-b border-border bg-background/80 backdrop-blur-sm sticky top-0 z-20">
+    <header className="h-14 flex items-center px-4 lg:px-6 border-b border-border bg-background sticky top-0 z-20">
       <button
         onClick={onMenuClick}
         className="lg:hidden mr-3 text-muted-foreground hover:text-foreground"
