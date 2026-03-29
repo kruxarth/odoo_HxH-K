@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { RuleBuilder } from "@/components/admin/RuleBuilder";
+import { RuleBuilder, type RuleFormData } from "@/components/admin/RuleBuilder";
 import { Trash } from "@phosphor-icons/react";
 import {
   Sheet,
@@ -10,7 +10,6 @@ import {
   SheetTitle,
 } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
-import type { ApprovalRule } from "@/lib/mock-data";
 
 function formatCurrency(amount: number) {
   return new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(amount);
@@ -18,8 +17,10 @@ function formatCurrency(amount: number) {
 
 export default function RulesPage() {
   const [rules, setRules] = useState<any[]>([]);
+  const [users, setUsers] = useState<{ id: string; name: string; role: string }[]>([]);
   const [loading, setLoading] = useState(true);
   const [builderOpen, setBuilderOpen] = useState(false);
+  const [saveError, setSaveError] = useState("");
 
   function loadRules() {
     fetch("/api/rules")
@@ -28,31 +29,26 @@ export default function RulesPage() {
       .catch(() => setLoading(false));
   }
 
-  useEffect(() => { loadRules(); }, []);
+  useEffect(() => {
+    loadRules();
+    fetch("/api/users")
+      .then((r) => r.json())
+      .then((d) => setUsers(Array.isArray(d) ? d.map((u: any) => ({ id: u.id, name: u.name, role: u.role })) : []))
+      .catch(() => {});
+  }, []);
 
-  async function handleSave(rule: ApprovalRule) {
-    // Map mock-data ApprovalRule to API format
-    // Only include steps that have a specificApproverId
-    const apiSteps = rule.steps
-      .filter((s) => s.specificApproverId)
-      .map((s) => ({
-        approverId: s.specificApproverId!,
-        sequence: s.stepOrder,
-        label: `Step ${s.stepOrder}`,
-      }));
-
-    await fetch("/api/rules", {
+  async function handleSave(data: RuleFormData) {
+    setSaveError("");
+    const res = await fetch("/api/rules", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        name: rule.name,
-        minAmount: rule.minAmount,
-        maxAmount: rule.maxAmount,
-        isManagerApprover: rule.isManagerApprover,
-        conditionType: "NONE",
-        steps: apiSteps,
-      }),
+      body: JSON.stringify(data),
     });
+    if (!res.ok) {
+      const body = await res.json().catch(() => ({}));
+      setSaveError(body.error ?? "Failed to save rule");
+      return;
+    }
     loadRules();
     setBuilderOpen(false);
   }
@@ -71,7 +67,7 @@ export default function RulesPage() {
             {loading ? "Loading…" : `${rules.length} rule${rules.length !== 1 ? "s" : ""} configured`}
           </p>
         </div>
-        <Button onClick={() => setBuilderOpen(true)}>+ New Rule</Button>
+        <Button onClick={() => { setSaveError(""); setBuilderOpen(true); }}>+ New Rule</Button>
       </div>
 
       <div className="space-y-3">
@@ -91,6 +87,11 @@ export default function RulesPage() {
                       Manager auto-approver
                     </span>
                   )}
+                  {rule.conditionType && rule.conditionType !== "NONE" && (
+                    <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-primary/10 text-primary border border-primary/20 font-mono">
+                      {rule.conditionType}
+                    </span>
+                  )}
                 </div>
                 <p className="text-sm text-muted-foreground">
                   {formatCurrency(rule.minAmount)} – {rule.maxAmount ? formatCurrency(rule.maxAmount) : "Unlimited"}
@@ -98,7 +99,7 @@ export default function RulesPage() {
                 <div className="flex items-center gap-2 mt-2 flex-wrap">
                   {(rule.steps ?? []).map((step: any, i: number) => (
                     <span key={step.id ?? i} className="text-[10px] px-2 py-0.5 rounded-full bg-muted text-muted-foreground border border-border font-mono">
-                      Step {step.sequence ?? i + 1}: {step.approver?.name ?? step.approverId}
+                      {step.label ?? `Step ${step.sequence ?? i + 1}`}: {step.approver?.name ?? "—"}
                     </span>
                   ))}
                 </div>
@@ -120,12 +121,25 @@ export default function RulesPage() {
       </div>
 
       <Sheet open={builderOpen} onOpenChange={setBuilderOpen}>
-        <SheetContent className="bg-card border-border w-full sm:max-w-lg overflow-y-auto" side="right">
+        <SheetContent
+          className="bg-card border-border w-full sm:max-w-lg overflow-y-auto overflow-x-hidden"
+          side="right"
+        >
           <SheetHeader>
             <SheetTitle className="font-heading">New Approval Rule</SheetTitle>
           </SheetHeader>
-          <div className="mt-6">
-            <RuleBuilder onSave={handleSave} onCancel={() => setBuilderOpen(false)} />
+          {saveError && (
+            <p className="px-4 text-xs text-destructive flex items-center gap-1.5">
+              <span className="w-1.5 h-1.5 rounded-full bg-destructive shrink-0" />
+              {saveError}
+            </p>
+          )}
+          <div className="px-4 pb-4">
+            <RuleBuilder
+              users={users}
+              onSave={handleSave}
+              onCancel={() => setBuilderOpen(false)}
+            />
           </div>
         </SheetContent>
       </Sheet>
