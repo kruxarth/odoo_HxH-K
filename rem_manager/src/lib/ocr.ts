@@ -1,4 +1,5 @@
 import 'server-only'
+import { createRequire } from 'node:module'
 
 export interface OcrResult {
   amount?: string
@@ -6,8 +7,10 @@ export interface OcrResult {
   description?: string
 }
 
+const require = createRequire(import.meta.url)
+
 export async function parseReceipt(imageBuffer: Buffer): Promise<OcrResult> {
-  const Tesseract = await import('tesseract.js')
+  const Tesseract = require('tesseract.js') as typeof import('tesseract.js')
   const { data: { text } } = await Tesseract.recognize(imageBuffer, 'eng', {
     logger: () => {},
   } as any)
