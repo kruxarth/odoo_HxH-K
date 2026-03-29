@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { signIn } from "next-auth/react";
 import Link from "next/link";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -22,8 +23,37 @@ export default function SignupPage() {
   const [company, setCompany] = useState("");
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
 
   const selectedCountry = COUNTRIES.find((c) => c.code === country) ?? COUNTRIES[0];
+
+  async function handleCreate() {
+    if (!name || !email || !password) return;
+    setError("");
+    setLoading(true);
+    const res = await fetch("/api/signup", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        name,
+        email,
+        password,
+        companyName: company,
+        country,
+        currency: selectedCountry.currency,
+      }),
+    });
+    if (!res.ok) {
+      const data = await res.json();
+      setError(data.error ?? "Something went wrong");
+      setLoading(false);
+      return;
+    }
+    await signIn("credentials", { email, password, redirect: false });
+    router.push("/dashboard");
+  }
 
   return (
     <div className="w-full max-w-sm animate-in fade-in slide-in-from-bottom-4 duration-500">
@@ -121,14 +151,21 @@ export default function SignupPage() {
             <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
               Password
             </label>
-            <Input type="password" placeholder="••••••••" className="bg-card border-border" />
+            <Input
+              type="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              placeholder="••••••••"
+              className="bg-card border-border"
+            />
           </div>
+          {error && <p className="text-xs text-destructive">{error}</p>}
           <div className="flex gap-2">
-            <Button variant="outline" className="flex-1" onClick={() => setStep(1)}>
+            <Button variant="outline" className="flex-1" onClick={() => setStep(1)} disabled={loading}>
               ← Back
             </Button>
-            <Button className="flex-1" onClick={() => router.push("/dashboard")}>
-              Create Account
+            <Button className="flex-1" onClick={handleCreate} disabled={loading || !name || !email || !password}>
+              {loading ? "Creating…" : "Create Account"}
             </Button>
           </div>
         </div>

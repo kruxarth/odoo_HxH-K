@@ -1,0 +1,128 @@
+generator client {
+  provider        = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum Role {
+  ADMIN
+  MANAGER
+  EMPLOYEE
+}
+
+enum ExpenseStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum ApprovalStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum ConditionType {
+  NONE
+  PERCENTAGE
+  SPECIFIC_APPROVER
+  HYBRID
+}
+
+model Company {
+  id        String   @id @default(cuid())
+  name      String
+  country   String
+  currency  String   @default("USD")
+  createdAt DateTime @default(now())
+
+  users    User[]
+  expenses Expense[]
+  rules    ApprovalRule[]
+}
+
+model User {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  passwordHash String
+  name         String
+  role         Role     @default(EMPLOYEE)
+  managerId    String?
+  companyId    String
+  createdAt    DateTime @default(now())
+
+  company   Company  @relation(fields: [companyId], references: [id])
+  manager   User?    @relation("ManagerEmployee", fields: [managerId], references: [id])
+  employees User[]   @relation("ManagerEmployee")
+
+  submittedExpenses Expense[]         @relation("SubmittedExpenses")
+  approvals         ExpenseApproval[] @relation("ApproverApprovals")
+  specificApproverRules ApprovalRule[] @relation("SpecificApprover")
+  specificApproverSteps ApprovalStep[] @relation("StepApprover")
+}
+
+model Expense {
+  id                    String        @id @default(cuid())
+  title                 String
+  amount                Float
+  currency              String
+  amountInCompanyCurrency Float       @default(0)
+  category              String
+  description           String        @default("")
+  status                ExpenseStatus @default(PENDING)
+  submitterId           String
+  companyId             String
+  receiptUrl            String?
+  submittedAt           DateTime      @default(now())
+  updatedAt             DateTime      @updatedAt
+
+  submitter Company   @relation(fields: [companyId], references: [id])
+  user      User      @relation("SubmittedExpenses", fields: [submitterId], references: [id])
+  approvals ExpenseApproval[]
+}
+
+model ApprovalRule {
+  id                  String        @id @default(cuid())
+  name                String
+  companyId           String
+  minAmount           Float         @default(0)
+  maxAmount           Float?
+  isManagerApprover   Boolean       @default(false)
+  conditionType       ConditionType @default(NONE)
+  percentageThreshold Float?
+  specificApproverId  String?
+  createdAt           DateTime      @default(now())
+
+  company           Company        @relation(fields: [companyId], references: [id])
+  specificApprover  User?          @relation("SpecificApprover", fields: [specificApproverId], references: [id])
+  steps             ApprovalStep[]
+}
+
+model ApprovalStep {
+  id          String @id @default(cuid())
+  ruleId      String
+  approverId  String
+  sequence    Int
+  label       String?
+
+  rule     ApprovalRule @relation(fields: [ruleId], references: [id], onDelete: Cascade)
+  approver User         @relation("StepApprover", fields: [approverId], references: [id])
+
+  @@unique([ruleId, sequence])
+}
+
+model ExpenseApproval {
+  id          String         @id @default(cuid())
+  expenseId   String
+  approverId  String
+  status      ApprovalStatus @default(PENDING)
+  comment     String?
+  sequence    Int            @default(0)
+  decidedAt   DateTime?
+  createdAt   DateTime       @default(now())
+
+  expense  Expense @relation(fields: [expenseId], references: [id], onDelete: Cascade)
+  approver User    @relation("ApproverApprovals", fields: [approverId], references: [id])
+}

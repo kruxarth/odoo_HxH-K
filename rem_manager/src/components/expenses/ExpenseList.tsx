@@ -11,25 +11,36 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { ExpenseStatusBadge } from "./ExpenseStatusBadge";
-import type { Expense, ExpenseStatus, ExpenseCategory } from "@/lib/mock-data";
-import {
-  formatCurrency,
-  formatRelativeDate,
-  CATEGORY_LABELS,
-  getUserById,
-} from "@/lib/mock-data";
 
+type ExpenseStatus = "PENDING" | "APPROVED" | "REJECTED";
 const ALL_STATUSES: ExpenseStatus[] = ["PENDING", "APPROVED", "REJECTED"];
 
+const CATEGORY_LABELS: Record<string, string> = {
+  TRAVEL: "Travel", MEALS: "Meals", ACCOMMODATION: "Accommodation",
+  EQUIPMENT: "Equipment", SOFTWARE: "Software", MARKETING: "Marketing", OTHER: "Other",
+};
+
+function formatCurrency(amount: number, currency = "USD") {
+  return new Intl.NumberFormat("en-US", { style: "currency", currency }).format(amount);
+}
+
+function formatRelativeDate(dateStr: string) {
+  const diff = Date.now() - new Date(dateStr).getTime();
+  const days = Math.floor(diff / 86400000);
+  if (days === 0) return "Today";
+  if (days === 1) return "Yesterday";
+  return `${days}d ago`;
+}
+
 interface ExpenseListProps {
-  expenses: Expense[];
+  expenses: any[];
   showSubmitter?: boolean;
 }
 
 export function ExpenseList({ expenses, showSubmitter = false }: ExpenseListProps) {
   const router = useRouter();
   const [statusFilter, setStatusFilter] = useState<ExpenseStatus | "ALL">("ALL");
-  const [categoryFilter, setCategoryFilter] = useState<ExpenseCategory | "ALL">("ALL");
+  const [categoryFilter, setCategoryFilter] = useState<string>("ALL");
 
   const filtered = expenses.filter((e) => {
     if (statusFilter !== "ALL" && e.status !== statusFilter) return false;
@@ -37,7 +48,7 @@ export function ExpenseList({ expenses, showSubmitter = false }: ExpenseListProp
     return true;
   });
 
-  const categories = Array.from(new Set(expenses.map((e) => e.category)));
+  const categories = Array.from(new Set(expenses.map((e) => e.category as string)));
 
   return (
     <div className="space-y-4">
@@ -60,13 +71,13 @@ export function ExpenseList({ expenses, showSubmitter = false }: ExpenseListProp
         </div>
         <select
           value={categoryFilter}
-          onChange={(e) => setCategoryFilter(e.target.value as ExpenseCategory | "ALL")}
+          onChange={(e) => setCategoryFilter(e.target.value)}
           className="h-8 px-2 text-xs rounded-md bg-card border border-border text-foreground focus:outline-none focus:ring-1 focus:ring-ring"
         >
           <option value="ALL">All Categories</option>
           {categories.map((c) => (
             <option key={c} value={c}>
-              {CATEGORY_LABELS[c]}
+              {CATEGORY_LABELS[c] ?? c}
             </option>
           ))}
         </select>
@@ -98,35 +109,32 @@ export function ExpenseList({ expenses, showSubmitter = false }: ExpenseListProp
                 </TableCell>
               </TableRow>
             ) : (
-              filtered.map((expense) => {
-                const submitter = getUserById(expense.submittedById);
-                return (
-                  <TableRow
-                    key={expense.id}
-                    className="border-border cursor-pointer hover:bg-card/60 transition-colors"
-                    onClick={() => router.push(`/expenses/${expense.id}`)}
-                  >
-                    <TableCell className="font-medium text-sm">{expense.title}</TableCell>
-                    <TableCell className="text-muted-foreground text-sm">
-                      {CATEGORY_LABELS[expense.category]}
+              filtered.map((expense) => (
+                <TableRow
+                  key={expense.id}
+                  className="border-border cursor-pointer hover:bg-card/60 transition-colors"
+                  onClick={() => router.push(`/expenses/${expense.id}`)}
+                >
+                  <TableCell className="font-medium text-sm">{expense.title}</TableCell>
+                  <TableCell className="text-muted-foreground text-sm">
+                    {CATEGORY_LABELS[expense.category] ?? expense.category}
+                  </TableCell>
+                  <TableCell className="text-right font-mono font-medium text-sm">
+                    {formatCurrency(expense.amount, expense.currency)}
+                  </TableCell>
+                  <TableCell>
+                    <ExpenseStatusBadge status={expense.status} />
+                  </TableCell>
+                  {showSubmitter && (
+                    <TableCell className="text-sm text-muted-foreground">
+                      {expense.user?.name ?? "Unknown"}
                     </TableCell>
-                    <TableCell className="text-right font-mono font-medium text-sm">
-                      {formatCurrency(expense.amount, expense.currency)}
-                    </TableCell>
-                    <TableCell>
-                      <ExpenseStatusBadge status={expense.status} />
-                    </TableCell>
-                    {showSubmitter && (
-                      <TableCell className="text-sm text-muted-foreground">
-                        {submitter?.name ?? "Unknown"}
-                      </TableCell>
-                    )}
-                    <TableCell className="text-muted-foreground text-sm">
-                      {formatRelativeDate(expense.submittedAt)}
-                    </TableCell>
-                  </TableRow>
-                );
-              })
+                  )}
+                  <TableCell className="text-muted-foreground text-sm">
+                    {formatRelativeDate(expense.submittedAt)}
+                  </TableCell>
+                </TableRow>
+              ))
             )}
           </TableBody>
         </Table>

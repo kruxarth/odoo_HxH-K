@@ -2,13 +2,6 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import type { ExpenseApproval, Expense } from "@/lib/mock-data";
-import {
-  getUserById,
-  formatCurrency,
-  formatRelativeDate,
-  CATEGORY_LABELS,
-} from "@/lib/mock-data";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import {
@@ -18,9 +11,26 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 
+const CATEGORY_LABELS: Record<string, string> = {
+  TRAVEL: "Travel", MEALS: "Meals", ACCOMMODATION: "Accommodation",
+  EQUIPMENT: "Equipment", SOFTWARE: "Software", MARKETING: "Marketing", OTHER: "Other",
+};
+
+function formatCurrency(amount: number, currency = "USD") {
+  return new Intl.NumberFormat("en-US", { style: "currency", currency }).format(amount);
+}
+
+function formatRelativeDate(dateStr: string) {
+  const diff = Date.now() - new Date(dateStr).getTime();
+  const days = Math.floor(diff / 86400000);
+  if (days === 0) return "Today";
+  if (days === 1) return "Yesterday";
+  return `${days}d ago`;
+}
+
 interface ApprovalQueueProps {
-  pendingApprovals: ExpenseApproval[];
-  expenses: Expense[];
+  pendingApprovals: any[];
+  expenses: any[];
   onApprove: (expenseId: string, comment?: string) => void;
   onReject: (expenseId: string, comment: string) => void;
 }
@@ -72,7 +82,7 @@ export function ApprovalQueue({
         {pendingApprovals.map((approval) => {
           const expense = expenses.find((e) => e.id === approval.expenseId);
           if (!expense) return null;
-          const submitter = getUserById(expense.submittedById);
+          const submitterName = expense.user?.name ?? "Unknown";
 
           return (
             <div
@@ -88,12 +98,10 @@ export function ApprovalQueue({
                     {expense.title}
                   </button>
                   <div className="flex items-center gap-3 mt-1.5 flex-wrap">
-                    <span className="text-xs text-muted-foreground">
-                      {submitter?.name ?? "Unknown"}
-                    </span>
+                    <span className="text-xs text-muted-foreground">{submitterName}</span>
                     <span className="text-xs text-muted-foreground">·</span>
                     <span className="text-xs text-muted-foreground">
-                      {CATEGORY_LABELS[expense.category]}
+                      {CATEGORY_LABELS[expense.category] ?? expense.category}
                     </span>
                     <span className="text-xs text-muted-foreground">·</span>
                     <span className="text-xs text-muted-foreground">

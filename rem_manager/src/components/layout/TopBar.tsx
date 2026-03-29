@@ -2,7 +2,7 @@
 
 import { usePathname } from "next/navigation";
 import { List } from "@phosphor-icons/react";
-import { useMockStore } from "@/lib/mock-store";
+import { useSession } from "next-auth/react";
 
 const ROLE_BADGE: Record<string, string> = {
   ADMIN: "bg-amber-500/20 text-amber-400 border-amber-500/30",
@@ -32,7 +32,15 @@ interface TopBarProps {
 
 export function TopBar({ onMenuClick }: TopBarProps) {
   const pathname = usePathname();
-  const { role, currentUser } = useMockStore();
+  const { data: session } = useSession();
+  const role = session?.user?.role ?? "EMPLOYEE";
+  const name = session?.user?.name ?? "";
+  const initials = name
+    .split(" ")
+    .map((w: string) => w[0])
+    .join("")
+    .slice(0, 2)
+    .toUpperCase();
   const segments = getSegments(pathname);
 
   return (
@@ -61,12 +69,12 @@ export function TopBar({ onMenuClick }: TopBarProps) {
       </div>
       <div className="flex items-center gap-3">
         <span
-          className={`px-2 py-0.5 text-[10px] font-mono font-medium rounded-full border ${ROLE_BADGE[role]}`}
+          className={`px-2 py-0.5 text-[10px] font-mono font-medium rounded-full border ${ROLE_BADGE[role] ?? ""}`}
         >
           {role}
         </span>
         <div className="w-7 h-7 rounded-full bg-primary/20 border border-primary/30 flex items-center justify-center text-xs font-medium text-primary">
-          {currentUser.avatarInitials}
+          {initials}
         </div>
       </div>
     </header>

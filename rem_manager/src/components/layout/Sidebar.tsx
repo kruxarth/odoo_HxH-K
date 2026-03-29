@@ -10,7 +10,7 @@ import {
   Gear,
   X,
 } from "@phosphor-icons/react";
-import { useMockStore } from "@/lib/mock-store";
+import { useSession, signOut } from "next-auth/react";
 import { cn } from "@/lib/utils";
 
 const NAV_ITEMS = [
@@ -53,7 +53,16 @@ interface SidebarProps {
 
 export function Sidebar({ open, onClose }: SidebarProps) {
   const pathname = usePathname();
-  const { role, currentUser } = useMockStore();
+  const { data: session } = useSession();
+  const role = session?.user?.role ?? "EMPLOYEE";
+  const name = session?.user?.name ?? "";
+  const email = session?.user?.email ?? "";
+  const initials = name
+    .split(" ")
+    .map((w: string) => w[0])
+    .join("")
+    .slice(0, 2)
+    .toUpperCase();
 
   const visibleItems = NAV_ITEMS.filter((item) =>
     (item.roles as readonly string[]).includes(role)
@@ -122,20 +131,26 @@ export function Sidebar({ open, onClose }: SidebarProps) {
         </nav>
 
         {/* User */}
-        <div className="px-3 pb-4">
+        <div className="px-3 pb-4 space-y-1">
           <div className="flex items-center gap-3 px-3 py-2.5 rounded-md bg-sidebar-accent">
             <div className="w-7 h-7 rounded-full bg-primary/20 border border-primary/30 flex items-center justify-center text-xs font-medium text-primary shrink-0">
-              {currentUser.avatarInitials}
+              {initials}
             </div>
             <div className="min-w-0">
               <p className="text-xs font-medium text-sidebar-foreground truncate">
-                {currentUser.name}
+                {name}
               </p>
               <p className="text-[10px] text-sidebar-foreground/50 truncate">
-                {currentUser.email}
+                {email}
               </p>
             </div>
           </div>
+          <button
+            onClick={() => signOut({ callbackUrl: "/login" })}
+            className="w-full text-left px-3 py-1.5 text-xs text-muted-foreground hover:text-foreground rounded-md hover:bg-sidebar-accent transition-colors"
+          >
+            Sign out
+          </button>
         </div>
       </aside>
     </>

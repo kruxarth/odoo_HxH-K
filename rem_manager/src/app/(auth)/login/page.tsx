@@ -2,17 +2,33 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { signIn } from "next-auth/react";
 import Link from "next/link";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 
 export default function LoginPage() {
   const router = useRouter();
-  const [email, setEmail] = useState("charlie@acme.com");
-  const [password, setPassword] = useState("password");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
 
-  function handleDemo() {
-    router.push("/dashboard");
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    setError("");
+    setLoading(true);
+    const result = await signIn("credentials", {
+      email,
+      password,
+      redirect: false,
+    });
+    setLoading(false);
+    if (result?.error) {
+      setError("Invalid email or password.");
+    } else {
+      router.push("/dashboard");
+    }
   }
 
   return (
@@ -30,13 +46,7 @@ export default function LoginPage() {
         <p className="text-sm text-muted-foreground">Sign in to your account</p>
       </div>
 
-      <form
-        onSubmit={(e) => {
-          e.preventDefault();
-          handleDemo();
-        }}
-        className="space-y-4"
-      >
+      <form onSubmit={handleSubmit} className="space-y-4">
         <div className="space-y-1.5">
           <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
             Email
@@ -47,6 +57,7 @@ export default function LoginPage() {
             onChange={(e) => setEmail(e.target.value)}
             placeholder="you@company.com"
             className="bg-card border-border"
+            required
           />
         </div>
         <div className="space-y-1.5">
@@ -59,30 +70,16 @@ export default function LoginPage() {
             onChange={(e) => setPassword(e.target.value)}
             placeholder="••••••••"
             className="bg-card border-border"
+            required
           />
         </div>
-        <Button type="submit" className="w-full">
-          Sign in
+        {error && (
+          <p className="text-xs text-destructive">{error}</p>
+        )}
+        <Button type="submit" className="w-full" disabled={loading}>
+          {loading ? "Signing in…" : "Sign in"}
         </Button>
       </form>
-
-      <div className="mt-4">
-        <div className="relative">
-          <div className="absolute inset-0 flex items-center">
-            <div className="w-full border-t border-border" />
-          </div>
-          <div className="relative flex justify-center text-xs">
-            <span className="bg-background px-2 text-muted-foreground">or</span>
-          </div>
-        </div>
-        <Button
-          variant="outline"
-          className="w-full mt-4 border-primary/30 text-primary hover:bg-primary/10"
-          onClick={handleDemo}
-        >
-          Continue to Demo →
-        </Button>
-      </div>
 
       <p className="mt-6 text-center text-xs text-muted-foreground">
         No account?{" "}

@@ -1,68 +1,71 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { useRouter } from "next/navigation";
-import { useMockStore } from "@/lib/mock-store";
 import { ExpenseForm, type ExpenseFormData } from "@/components/expenses/ExpenseForm";
-import type { ExpenseCategory } from "@/lib/mock-data";
 import { CloudArrowUp, MagnifyingGlass, CheckCircle } from "@phosphor-icons/react";
 
 type Step = 1 | 2 | 3;
 
-const MOCK_OCR_RESULT = {
-  title: "Business Travel Receipt",
-  amount: "342.00",
-  currency: "USD",
-  category: "TRAVEL" as ExpenseCategory,
-  description: "Auto-extracted from receipt via OCR.",
-};
-
 export default function NewExpensePage() {
   const router = useRouter();
-  const { currentUser, addExpense } = useMockStore();
   const [step, setStep] = useState<Step>(1);
   const [dragOver, setDragOver] = useState(false);
   const [scanning, setScanning] = useState(false);
   const [scanned, setScanned] = useState(false);
   const [ocrData, setOcrData] = useState<Partial<ExpenseFormData> | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
-  function handleFile() {
+  async function handleFile(file?: File) {
+    if (!file) return;
     setScanning(true);
-    setTimeout(() => {
-      setScanning(false);
-      setScanned(true);
-      setOcrData({
-        title: MOCK_OCR_RESULT.title,
-        amount: parseFloat(MOCK_OCR_RESULT.amount),
-        currency: MOCK_OCR_RESULT.currency,
-        category: MOCK_OCR_RESULT.category,
-        description: MOCK_OCR_RESULT.description,
-      });
-      setTimeout(() => setStep(2), 600);
-    }, 2000);
+    try {
+      const formData = new FormData();
+      formData.append("image", file);
+      const res = await fetch("/api/ocr", { method: "POST", body: formData });
+      if (res.ok) {
+        const data = await res.json();
+        setOcrData({
+          title: data.description ?? "",
+          amount: data.amount ? parseFloat(data.amount) : undefined,
+          description: data.description ?? "",
+        });
+      }
+    } catch {
+      setOcrData({});
+    }
+    setScanning(false);
+    setScanned(true);
+    setTimeout(() => setStep(2), 600);
   }
 
-  function handleSubmit(data: ExpenseFormData) {
+  function handleFilePick(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (file) handleFile(file);
+  }
+
+  async function handleSubmit(data: ExpenseFormData) {
     setSubmitting(true);
-    setTimeout(() => {
-      addExpense({
-        id: `exp-${Date.now()}`,
-        title: data.title,
-        amount: data.amount,
-        currency: data.currency,
-        category: data.category,
-        description: data.description,
-        status: "PENDING",
-        submittedById: currentUser.id,
-        companyId: "company-1",
-        receiptUrl: null,
-        submittedAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
+    try {
+      const res = await fetch("/api/expenses", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          title: data.title,
+          amount: data.amount,
+          currency: data.currency,
+          category: data.category,
+          description: data.description,
+          date: new Date().toISOString(),
+        }),
       });
+      if (res.ok) {
+        setStep(3);
+      }
+    } finally {
       setSubmitting(false);
-      setStep(3);
-    }, 800);
+    }
   }
 
   const STEPS = [
@@ -108,11 +111,12 @@ export default function NewExpensePage() {
       <div className="rounded-xl border border-border bg-card p-6">
         {step === 1 && (
           <div className="space-y-4">
+            <input ref={fileInputRef} type="file" accept="image/*,.pdf" className="hidden" onChange={handleFilePick} />
             <div
               onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
               onDragLeave={() => setDragOver(false)}
-              onDrop={(e) => { e.preventDefault(); setDragOver(false); handleFile(); }}
-              onClick={handleFile}
+              onDrop={(e) => { e.preventDefault(); setDragOver(false); const f = e.dataTransfer.files[0]; if (f) handleFile(f); }}
+              onClick={() => fileInputRef.current?.click()}
               className={`border-2 border-dashed rounded-xl flex flex-col items-center justify-center gap-3 py-12 cursor-pointer transition-all ${
                 dragOver
                   ? "border-primary bg-primary/5"
@@ -178,9 +182,7 @@ export default function NewExpensePage() {
             </div>
             <div className="text-center space-y-1">
               <h2 className="font-heading text-xl font-bold text-foreground">Submitted!</h2>
-              <p className="text-sm text-muted-foreground">
-                Your expense has been submitted for approval.
-              </p>
+              <p className="text-sm text-muted-foreground">Your expense has been submitted for approval.</p>
             </div>
             <div className="flex gap-3 mt-2">
               <button

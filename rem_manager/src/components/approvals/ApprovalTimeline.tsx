@@ -1,9 +1,11 @@
-import type { ExpenseApproval } from "@/lib/mock-data";
-import { getUserById, formatDate } from "@/lib/mock-data";
 import { Check, X, Clock } from "@phosphor-icons/react";
 
+function formatDate(dateStr: string) {
+  return new Date(dateStr).toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric" });
+}
+
 interface ApprovalTimelineProps {
-  approvals: ExpenseApproval[];
+  approvals: any[];
 }
 
 export function ApprovalTimeline({ approvals }: ApprovalTimelineProps) {
@@ -16,7 +18,7 @@ export function ApprovalTimeline({ approvals }: ApprovalTimelineProps) {
   return (
     <div className="space-y-0">
       {approvals.map((approval, i) => {
-        const approver = getUserById(approval.approverId);
+        const approverName = approval.approver?.name ?? "Unknown";
         const isLast = i === approvals.length - 1;
 
         return (
@@ -45,10 +47,10 @@ export function ApprovalTimeline({ approvals }: ApprovalTimelineProps) {
               )}
             </div>
             {/* Content */}
-            <div className={`pb-6 min-w-0 ${isLast ? "" : ""}`}>
+            <div className="pb-6 min-w-0">
               <div className="flex items-center gap-2 flex-wrap">
                 <span className="text-sm font-medium text-foreground">
-                  {approver?.name ?? "Unknown"}
+                  {approverName}
                 </span>
                 <span
                   className={`text-[10px] px-1.5 py-0.5 rounded-full border font-mono ${
